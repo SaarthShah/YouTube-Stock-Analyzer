@@ -1,0 +1,8 @@
+transformers
+openai
+pandas
+numpy
+python-dotenv
+pytube
+re
+streamlit
