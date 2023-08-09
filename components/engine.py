@@ -16,16 +16,13 @@ stock_names = pd.read_csv('stocks.csv')
 
 def highlight_stock_names(text, stock_names):
     # Create a hash table (dictionary) for stock names and corresponding Markdown formatting
-    stock_name_format = {name.lower(): f'<span style="background-color: #3498db">{name}</span>' for name in stock_names}
+    stock_name_format = {str(name).lower(): f'<span style="background-color: #3498db">{name}</span>' for name in stock_names}
     words = text.split()  # Split text into words
-    # Function to remove special characters from the end of a word
-    def remove_special_chars(word):
-        return re.sub(r'[^a-zA-Z0-9]', '', word)
 
     highlighted_words = []
     for word in words:
         word_lower = word.lower()
-        cleaned_word = remove_special_chars(word_lower)
+        cleaned_word = word_lower.split("'")[0]
         highlighted_word = stock_name_format.get(cleaned_word, word)
         highlighted_words.append(highlighted_word)
     
@@ -33,7 +30,7 @@ def highlight_stock_names(text, stock_names):
     return highlighted_text
 
 # List of stock names (replace with your own list)
-stock_names = stock_names['Cleaned Name']
+stock_names = stock_names['Name']
 
 
 
