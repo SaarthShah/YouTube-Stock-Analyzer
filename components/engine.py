@@ -171,7 +171,7 @@ def engine(youtube_link="https://www.youtube.com/watch?v=16SUWTGsDGI&ab_channel=
             st.markdown(f'{result_df.loc[i, "sentiment"][0][0]["label"]}' + ' ' + str(round(result_df.loc[i, "sentiment"][0][0]["score"]*100, 2)) + '%')
             st.markdown(result_df.loc[i, "statement"])
         
-        print`('Stock-wise breakdown displayed successfully')
+        print('Stock-wise breakdown displayed successfully')
 
         st.markdown("## Summary")
         st.write(highlight_stock_names(summary, stock_names), unsafe_allow_html=True)
@@ -188,7 +188,7 @@ def engine(youtube_link="https://www.youtube.com/watch?v=16SUWTGsDGI&ab_channel=
         st.video(youtube_link)
 
         print('YouTube video displayed successfully')
-        
+
     except Exception as e:
         print(e)
         st.error("There was an error processing your request. Please try again.")
