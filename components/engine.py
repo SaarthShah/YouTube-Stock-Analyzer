@@ -55,121 +55,141 @@ def getTicker(company_name):
 
 
 def engine(youtube_link="https://www.youtube.com/watch?v=16SUWTGsDGI&ab_channel=CNBCTelevision"):
-    # try:
-
-    # Download the audio from the YouTube video
-    audio_location = Download(youtube_link)
-
-    # Read the audio file
-    audio_file = ''
-    with open(audio_location, "rb") as file:
-        audio_file = file.read()
-
-    # DELETE THE AUDIO FILE
-    os.remove(audio_location)
-
-    # Get the transcript from Deepgram
-
-    url = "https://api.deepgram.com/v1/listen?paragraphs=true&summarize=v2"
-
-    headers = {
-        "accept": "application/json",
-        "content-type": "audio/wave",
-        "Authorization": f"Token {str(deepgram_access_code)}"
-    }
-
-    response = requests.post(url, data=audio_file, headers=headers)
-
-    response_json = response.json()
-
-    summary = response_json['results']['summary']['short']
-
-    transcript = response_json['results']['channels'][0]['alternatives'][0]['paragraphs']['transcript']
-
-    response2 = openai.ChatCompletion.create(
-    model="gpt-3.5-turbo",
-    messages=[
-        {"role": "user", "content": f"'{transcript}'\n For every company or industry that the speaker mentions, give detailed but clear explanation of what they said. Return in the format of a python dictionary where each key is a stock/industry name and the contents is a detailed explanation of what that the person said. "}
-    ])
-
-    res_dict = response2['choices'][0]['message']['content']
-
     try:
-        res_dict_eval = eval(res_dict)
-    except:
-        response3 = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-         messages=[
-        {"role": "user", "content": f"'{res_dict}'\n Return a valid python dictionary where each key is a stock/industry name (ticker) and the contents is a detailed explanation of what that the person said"}
-    ])  
-        res_dict_eval = eval(response3['choices'][0]['message']['content'])
-    
-    result = {}
 
-    for key, statement in res_dict_eval.items():
-        result[key] = {
-            "sentiment": pipe(statement),
-            'statement': statement,
-            'ticker': getTicker(key)
+        print('Starting engine')
+        print('Downloading audio file from YouTube')
+
+        # Download the audio from the YouTube video
+        audio_location = Download(youtube_link)
+
+        # Read the audio file
+        audio_file = ''
+        with open(audio_location, "rb") as file:
+            audio_file = file.read()
+
+        # DELETE THE AUDIO FILE
+        os.remove(audio_location)
+
+        print('Audio file read successfully')
+
+        # Get the transcript from Deepgram
+
+        url = "https://api.deepgram.com/v1/listen?paragraphs=true&summarize=v2"
+
+        headers = {
+            "accept": "application/json",
+            "content-type": "audio/wave",
+            "Authorization": f"Token {str(deepgram_access_code)}"
         }
-    
-    result_df = pd.DataFrame.from_dict(result, orient='index')
-    
-    # Create st.metric for each stock
 
-    st.markdown("## Sentiment Analysis Results")
+        response = requests.post(url, data=audio_file, headers=headers)
 
-    # Create columns layout
-    cols = st.columns(5)  # Adjust the number of columns as needed
+        response_json = response.json()
 
-    counter = 0  # Counter to keep track of the metrics
+        summary = response_json['results']['summary']['short']
 
-    for index, row in result_df.iterrows():
-        score = str(round(row['sentiment'][0][0]['score']*100, 2)) + '%'
-        label = row['sentiment'][0][0]['label']
+        transcript = response_json['results']['channels'][0]['alternatives'][0]['paragraphs']['transcript']
+
+        print('Transcript fetched successfully')
+
+        response2 = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "user", "content": f"'{transcript}'\n For every company or industry that the speaker mentions, give detailed but clear explanation of what they said. Return in the format of a python dictionary where each key is a stock/industry name and the contents is a detailed explanation of what that the person said. "}
+        ])
+
+        res_dict = response2['choices'][0]['message']['content']
+
+        try:
+            res_dict_eval = eval(res_dict)
+        except:
+            response3 = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+            {"role": "user", "content": f"'{res_dict}'\n Return a valid python dictionary where each key is a stock/industry name (ticker) and the contents is a detailed explanation of what that the person said"}
+        ])  
+            res_dict_eval = eval(response3['choices'][0]['message']['content'])
         
-        # Choose delta_color based on sentiment label
-        if label == 'bullish':
-            delta_color = 'normal'
-        elif label == 'neutral':
-            delta_color = 'off'
-        else:
-            delta_color = 'normal'
+        result = {}
 
+        for key, statement in res_dict_eval.items():
+            result[key] = {
+                "sentiment": pipe(statement),
+                'statement': statement,
+                'ticker': getTicker(key)
+            }
         
+        print('Stock analysis fecthed from OpenAI successfully')
 
-        # Capitalize the first letter of the index
-        index = index[0].upper() + index[1:]
-
-        name = index
+        result_df = pd.DataFrame.from_dict(result, orient='index')
         
-        if label == 'bearish':
-            label = '-bearish'
-        
-        # Create a metric in the current column
-        with cols[counter % 5]:  # Alternate columns
-            st.metric(label=name, value=score, delta=label, delta_color=delta_color)
-        
-        counter += 1  # Increment counter
-    
-    st.markdown('## Stock-wise breakdown')
-    for i in result_df.index:
-        # Capitalize the first letter of the index
-        st.markdown(f'#### {i[0].upper() + i[1:]}')
-        st.markdown('Possible Ticker: ' + str(result_df.loc[i, 'ticker']))
-        st.markdown(f'{result_df.loc[i, "sentiment"][0][0]["label"]}' + ' ' + str(round(result_df.loc[i, "sentiment"][0][0]["score"]*100, 2)) + '%')
-        st.markdown(result_df.loc[i, "statement"])
+        # Create st.metric for each stock
 
-    st.markdown("## Summary")
-    st.write(highlight_stock_names(summary, stock_names), unsafe_allow_html=True)
-    
-    st.markdown("## Transcript")
-    st.write(highlight_stock_names(transcript, stock_names), unsafe_allow_html=True)
+        st.markdown("## Sentiment Analysis Results")
 
-    st.markdown("## YouTube Video")
-    # Display the YouTube video
-    st.video(youtube_link)
-    # except Exception as e:
-        # print(e)
-        # st.error("There was an error processing your request. Please try again.")
+        # Create columns layout
+        cols = st.columns(5)  # Adjust the number of columns as needed
+
+        counter = 0  # Counter to keep track of the metrics
+
+        for index, row in result_df.iterrows():
+            score = str(round(row['sentiment'][0][0]['score']*100, 2)) + '%'
+            label = row['sentiment'][0][0]['label']
+            
+            # Choose delta_color based on sentiment label
+            if label == 'bullish':
+                delta_color = 'normal'
+            elif label == 'neutral':
+                delta_color = 'off'
+            else:
+                delta_color = 'normal'
+
+            
+
+            # Capitalize the first letter of the index
+            index = index[0].upper() + index[1:]
+
+            name = index
+            
+            if label == 'bearish':
+                label = '-bearish'
+            
+            # Create a metric in the current column
+            with cols[counter % 5]:  # Alternate columns
+                st.metric(label=name, value=score, delta=label, delta_color=delta_color)
+            
+            counter += 1  # Increment counter
+
+        print('Sentiment analysis results displayed successfully')
+        
+        st.markdown('## Stock-wise breakdown')
+        for i in result_df.index:
+            # Capitalize the first letter of the index
+            st.markdown(f'#### {i[0].upper() + i[1:]}')
+            st.markdown('Possible Ticker: ' + str(result_df.loc[i, 'ticker']))
+            st.markdown(f'{result_df.loc[i, "sentiment"][0][0]["label"]}' + ' ' + str(round(result_df.loc[i, "sentiment"][0][0]["score"]*100, 2)) + '%')
+            st.markdown(result_df.loc[i, "statement"])
+        
+        print`('Stock-wise breakdown displayed successfully')
+
+        st.markdown("## Summary")
+        st.write(highlight_stock_names(summary, stock_names), unsafe_allow_html=True)
+        
+        print('Summary displayed successfully')
+
+        st.markdown("## Transcript")
+        st.write(highlight_stock_names(transcript, stock_names), unsafe_allow_html=True)
+
+        print('Transcript displayed successfully')
+
+        st.markdown("## YouTube Video")
+        # Display the YouTube video
+        st.video(youtube_link)
+
+        print('YouTube video displayed successfully')
+        
+    except Exception as e:
+        print(e)
+        st.error("There was an error processing your request. Please try again.")
     
