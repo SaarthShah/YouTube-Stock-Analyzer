@@ -4,7 +4,6 @@ from transformers import pipeline
 import pandas as pd
 import requests
 from pytube import YouTube
-import re
 import os
 
 audio_location = ""
